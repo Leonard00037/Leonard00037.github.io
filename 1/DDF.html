@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Diagramas de Flujo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        #canvasContainer { overflow: auto; border: 1px solid #000; }
+        #toolbar { margin-bottom: 10px; }
+        button { margin-right: 5px; }
+    </style>
+</head>
+<body>
+    <div id="toolbar">
+        <button onclick="setTool('operacion')">Operación</button>
+        <button onclick="setTool('transporte')">Transporte</button>
+        <button onclick="setTool('almacenamiento')">Almacenamiento</button>
+        <button onclick="setTool('retraso')">Retraso</button>
+        <button onclick="setTool('inspeccion')">Inspección</button>
+        <button onclick="setTool('texto')">Agregar Texto</button>
+        <button onclick="setTool('eliminar')">Eliminar Figura</button>
+        <button onclick="exportToPNG()">Exportar a PNG</button>
+    </div>
+    <div id="canvasContainer">
+        <canvas id="canvas" width="800" height="600"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let currentTool = '';
+        let shapes = [];
+        let lastY = 50; // Posición inicial vertical
+        let scale = 1;
+
+        function setTool(tool) {
+            currentTool = tool;
+        }
+
+        function addShape() {
+            const shapeWidth = 100;
+            const shapeHeight = 60;
+            const x = canvas.width / (2 * scale) - shapeWidth / 2;
+            
+            const shape = {
+                type: currentTool,
+                x: x,
+                y: lastY,
+                width: shapeWidth,
+                height: shapeHeight,
+                text: ''
+            };
+
+            shapes.push(shape);
+            lastY += shapeHeight + 60;
+            adjustCanvasSize();
+            drawShapes();
+        }
+
+        function adjustCanvasSize() {
+            const requiredHeight = lastY + 100;
+            if (requiredHeight > canvas.height) {
+                canvas.height = requiredHeight;
+                scale = Math.min(800 / canvas.width, 600 / canvas.height);
+                ctx.scale(scale, scale);
+            }
+        }
+
+        function drawShapes() {
+            ctx.clearRect(0, 0, canvas.width / scale, canvas.height / scale);
+            shapes.forEach((shape, index) => {
+                drawShape(shape);
+                if (index > 0) {
+                    const prevShape = shapes[index - 1];
+                    ctx.beginPath();
+                    ctx.moveTo(prevShape.x + prevShape.width / 2, prevShape.y + prevShape.height);
+                    ctx.lineTo(prevShape.x + prevShape.width / 2, prevShape.y + prevShape.height + 30);
+                    ctx.lineTo(shape.x + shape.width / 2, shape.y - 30);
+                    ctx.lineTo(shape.x + shape.width / 2, shape.y);
+                    ctx.stroke();
+                }
+            });
+        }
+
+        function drawShape(shape) {
+            ctx.beginPath();
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'black';
+            
+            switch(shape.type) {
+                case 'operacion':
+                    ctx.arc(shape.x + shape.width / 2, shape.y + shape.height / 2, shape.width / 2, 0, 2 * Math.PI);
+                    break;
+                case 'transporte':
+                    ctx.moveTo(shape.x, shape.y + shape.height / 2);
+                    ctx.lineTo(shape.x + shape.width, shape.y + shape.height / 2);
+                    ctx.lineTo(shape.x + shape.width - 10, shape.y + shape.height / 2 - 10);
+                    ctx.moveTo(shape.x + shape.width, shape.y + shape.height / 2);
+                    ctx.lineTo(shape.x + shape.width - 10, shape.y + shape.height / 2 + 10);
+                    break;
+                case 'almacenamiento':
+                    ctx.moveTo(shape.x, shape.y);
+                    ctx.lineTo(shape.x + shape.width, shape.y);
+                    ctx.lineTo(shape.x + shape.width / 2, shape.y + shape.height);
+                    ctx.closePath();
+                    break;
+                case 'retraso':
+                    ctx.moveTo(shape.x, shape.y);
+                    ctx.lineTo(shape.x + shape.width, shape.y);
+                    ctx.lineTo(shape.x + shape.width, shape.y + shape.height);
+                    ctx.quadraticCurveTo(shape.x + shape.width / 2, shape.y + shape.height * 1.5, shape.x, shape.y + shape.height);
+                    ctx.closePath();
+                    break;
+                case 'inspeccion':
+                    ctx.rect(shape.x, shape.y, shape.width, shape.height);
+                    break;
+            }
+            ctx.fill();
+            ctx.stroke();
+            
+            // Dibujar texto
+            ctx.fillStyle = 'black';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(shape.text, shape.x + shape.width / 2, shape.y + shape.height / 2);
+
+            // Dibujar texto adicional a la derecha
+            if (shape.additionalText) {
+                ctx.textAlign = 'left';
+                ctx.fillText(shape.additionalText, shape.x + shape.width + 10, shape.y + shape.height / 2);
+            }
+        }
+
+        canvas.addEventListener('click', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / scale;
+            const y = (e.clientY - rect.top) / scale;
+            
+            if (currentTool === 'eliminar') {
+                for (let i = shapes.length - 1; i >= 0; i--) {
+                    const shape = shapes[i];
+                    if (x >= shape.x && x <= shape.x + shape.width &&
+                        y >= shape.y && y <= shape.y + shape.height) {
+                        shapes.splice(i, 1);
+                        reorganizeShapes();
+                        drawShapes();
+                        break;
+                    }
+                }
+            } else if (currentTool === 'texto') {
+                for (let i = shapes.length - 1; i >= 0; i--) {
+                    const shape = shapes[i];
+                    if (x >= shape.x + shape.width && x <= shape.x + shape.width + 150 &&
+                        y >= shape.y && y <= shape.y + shape.height) {
+                        const text = prompt("Ingrese el texto adicional para la figura:");
+                        if (text) {
+                            shape.additionalText = text;
+                            drawShapes();
+                        }
+                        break;
+                    }
+                }
+            } else if (currentTool) {
+                addShape();
+            }
+        });
+
+        function reorganizeShapes() {
+            lastY = 50;
+            shapes.forEach(shape => {
+                shape.y = lastY;
+                lastY += shape.height + 60;
+            });
+            adjustCanvasSize();
+        }
+
+        function exportToPNG() {
+            const dataURL = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = 'diagrama_de_flujo.png';
+            link.href = dataURL;
+            link.click();
+        }
+    </script>
+</body>
+</html>

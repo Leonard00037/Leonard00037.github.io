@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Arte Binario</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --accent-color: #e74c3c;
+            --background-color: #ecf0f1;
+            --card-background: #ffffff;
+            --text-color: #2c3e50;
+        }
+
+        /* Estilos para la pantalla de carga */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--primary-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s;
+        }
+
+        .loading-title {
+            color: rgb(0, 0, 0);
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-align: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .loading-bar {
+            width: 200px;
+            height: 6px;
+            background-color: rgba(255,255,255,0.3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .loading-progress {
+            width: 0%;
+            height: 100%;
+            background-color: rgb(0, 0, 0);
+            transition: width 4s linear;
+        }
+
+        .loading-ascii {
+            color: rgb(255, 255, 255);
+            font-family: monospace;
+            font-size: 12px;
+            margin-bottom: 20px;
+            white-space: pre;
+        }
+
+        /* Estilos principales */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card {
+            background-color: var(--card-background);
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone {
+            border: 3px dashed var(--primary-color);
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone:hover {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-color: var(--secondary-color);
+        }
+
+        .drop-zone p {
+            margin: 0;
+            font-size: 1.2em;
+            color: var(--primary-color);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="number"] {
+            padding: 10px;
+            border: 2px solid var(--primary-color);
+            border-radius: 5px;
+            font-size: 1em;
+            width: 100%;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .btn-secondary {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #c0392b;
+        }
+
+        #ascii-output {
+            font-family: monospace;
+            white-space: pre;
+            overflow-x: auto;
+            padding: 20px;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            border-radius: 10px;
+            font-size: 10px;
+            line-height: 1;
+        }
+
+        .output-container {
+            position: relative;
+        }
+
+        .copy-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(44, 62, 80, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Pantalla de carga -->
+    <div class="loading-screen">
+        <div class="loading-ascii">
+ ▄▄▄▄    ██▓ ███▄    █  ▄▄▄       ██▀███  ▄▄▄█████▓
+▓█████▄ ▓██▒ ██ ▀█   █ ▒████▄    ▓██ ▒ ██▒▓  ██▒ ▓▒
+▒██▒ ▄██▒██▒▓██  ▀█ ██▒▒██  ▀█▄  ▓██ ░▄█ ▒▒ ▓██░ ▒░
+▒██░█▀  ░██░▓██▒  ▐▌██▒░██▄▄▄▄██ ▒██▀▀█▄  ░ ▓██▓ ░ 
+░▓█  ▀█▓░██░▒██░   ▓██░ ▓█   ▓██▒░██▓ ▒██▒  ▒██▒ ░ 
+░▒▓███▀▒░▓  ░ ▒░   ▒ ▒  ▒▒   ▓▒█░░ ▒▓ ░▒▓░  ▒ ░░   
+▒░▒   ░  ▒ ░░ ░░   ░ ▒░  ▒   ▒▒ ░  ░▒ ░ ▒░    ░    
+ ░    ░  ▒ ░   ░   ░ ░   ░   ▒     ░░   ░   ░      
+ ░       ░           ░       ░  ░   ░              
+      ░                                            
+        </div>
+        <div class="loading-title">Generador de Arte Binario</div>
+        <div class="loading-bar">
+            <div class="loading-progress"></div>
+        </div>
+    </div>
+
+    <!-- Contenido principal -->
+    <div class="container">
+        <h1>🎨 Generador de Arte Binario</h1>
+        
+        <div class="card">
+            <div class="drop-zone" id="drop-zone">
+                <p>📁 Arrastra y suelta una imagen aquí o haz clic para seleccionar</p>
+                <input type="file" id="file-input" accept="image/*" style="display: none;">
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="controls">
+                <div class="control-group">
+                    <label for="width">Ancho:</label>
+                    <input type="number" id="width" value="100" min="10" max="200">
+                </div>
+                <div class="control-group">
+                    <label for="height">Alto:</label>
+                    <input type="number" id="height" value="50" min="10" max="200">
+                </div>
+                <div class="control-group">
+                    <label for="threshold">Umbral: <span id="threshold-value">128</span></label>
+                    <input type="range" id="threshold" value="128" min="0" max="255">
+                </div>
+            </div>
+            <div class="buttons">
+                <button class="btn-primary" onclick="generateAscii()">🔄 Generar Arte</button>
+                <button class="btn-secondary" onclick="copyToClipboard()">📋 Copiar</button>
+            </div>
+        </div>
+        
+        <div class="card output-container">
+            <div id="ascii-output"></div>
+            <div class="copy-indicator">¡Copiado!</div>
+        </div>
+    </div>
+
+    <script>
+        // Script para la pantalla de carga
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadingScreen = document.querySelector('.loading-screen');
+            const container = document.querySelector('.container');
+            const progress = document.querySelector('.loading-progress');
+
+            // Iniciar la animación de la barra de progreso
+            setTimeout(() => {
+                progress.style.width = '100%';
+            }, 100);
+
+            // Después de 4 segundos, ocultar la pantalla de carga y mostrar el contenido
+            setTimeout(() => {
+                loadingScreen.style.opacity = '0';
+                container.style.opacity = '1';
+                
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                }, 500);
+            }, 4000);
+        });
+
+        // Script principal
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const asciiOutput = document.getElementById('ascii-output');
+        const thresholdInput = document.getElementById('threshold');
+        const thresholdValue = document.getElementById('threshold-value');
+        let currentImage = null;
+
+        thresholdInput.addEventListener('input', (e) => {
+            thresholdValue.textContent = e.target.value;
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#e74c3c';
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.borderColor = '#3498db';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#3498db';
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleImage(file);
+            }
+        });
+
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleImage(file);
+            }
+        });
+
+        function handleImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                currentImage = new Image();
+                currentImage.src = e.target.result;
+                currentImage.onload = () => {
+                    generateAscii();
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function generateAscii() {
+            if (!currentImage) {
+                alert('Por favor, selecciona una imagen primero.');
+                return;
+            }
+
+            const width = parseInt(document.getElementById('width').value);
+            const height = parseInt(document.getElementById('height').value);
+            const threshold = parseInt(thresholdInput.value);
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(currentImage, 0, 0, width, height);
+
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const asciiChars = ['░', '█'];
+            let asciiArt = '';
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const offset = (y * width + x) * 4;
+                    const r = imageData.data[offset];
+                    const g = imageData.data[offset + 1];
+                    const b = imageData.data[offset + 2];
+                    const brightness = (r + g + b) / 3;
+                    
+                    const charIndex = brightness < threshold ? 1 : 0;
+                    asciiArt += asciiChars[charIndex];
+                }
+                asciiArt += '\n';
+            }
+
+            asciiOutput.textContent = asciiArt;
+        }
+
+        function copyToClipboard() {
+            const text = asciiOutput.textContent;
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    const indicator = document.querySelector('.copy-indicator');
+                    indicator.style.display = 'block';
+                    setTimeout(() => {
+                        indicator.style.display = 'none';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Error al copiar al portapapeles:', err);
+                });
+            }
+        }
+    </script>
+</body>
+</html>
