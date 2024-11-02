@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Conversor de Tabla a Imagen</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        #inputArea {
+            width: 100%;
+            height: 200px;
+            margin-bottom: 20px;
+            padding: 10px;
+            font-family: monospace;
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        #tableContainer {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .total-row td {
+            font-weight: bold;
+            background-color: #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Conversor de Tabla Markdown a Imagen</h1>
+        
+        <textarea id="inputArea" placeholder="Pega tu tabla en formato markdown aquí..."></textarea>
+        
+        <div class="controls">
+            <button onclick="processTable()">Convertir Tabla</button>
+            <button onclick="downloadImage()">Descargar como Imagen</button>
+        </div>
+        
+        <div id="tableContainer"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        // Procesar la tabla desde markdown
+        function processTable() {
+            const input = document.getElementById('inputArea').value;
+            const rows = input.split('\n').filter(row => row.trim() !== '');
+            
+            let htmlTable = '<table>';
+            
+            rows.forEach((row, index) => {
+                if (row.includes('|-')) return; // Ignorar línea separadora
+                
+                const cells = row.split('|').filter(cell => cell.trim() !== '');
+                const isTotal = row.toLowerCase().includes('total');
+                
+                htmlTable += `<tr${isTotal ? ' class="total-row"' : ''}>`;
+                
+                cells.forEach((cell, cellIndex) => {
+                    const cellContent = cell.trim().replace(/\*\*/g, '');
+                    if (index === 0) {
+                        htmlTable += `<th>${cellContent}</th>`;
+                    } else {
+                        htmlTable += `<td>${cellContent}</td>`;
+                    }
+                });
+                
+                htmlTable += '</tr>';
+            });
+            
+            htmlTable += '</table>';
+            document.getElementById('tableContainer').innerHTML = htmlTable;
+        }
+
+        // Convertir a imagen y descargar
+        async function downloadImage() {
+            const tableContainer = document.getElementById('tableContainer');
+            
+            try {
+                const canvas = await html2canvas(tableContainer, {
+                    backgroundColor: 'white',
+                    scale: 2 // Mayor calidad
+                });
+                
+                const link = document.createElement('a');
+                link.download = 'tabla-costos.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            } catch (error) {
+                alert('Error al generar la imagen: ' + error.message);
+            }
+        }
+
+        // Cargar ejemplo inicial
+        window.onload = function() {
+            document.getElementById('inputArea').value = `| Concepto | Monto ($) | Justificación |
+|----------|-----------|---------------|
+| Alquiler local (80m²) | 150,000 | Zona comercial Punta Alta, valores 2024 |
+| Servicios básicos | 45,000 | Luz, agua, gas, internet (tarifas locales) |
+| Sueldos básicos (2 empleados) | 320,000 | $160,000 por empleado según convenio |
+| Cargas sociales (35%) | 112,000 | Según legislación vigente |
+| Seguros | 25,000 | Cobertura básica necesaria |
+| Mantenimiento | 20,000 | Preventivo mensual |
+| Marketing local | 15,000 | Publicidad local y redes sociales |
+| **Total Costos Fijos** | **687,000** | |`;
+            
+            processTable();
+        }
+    </script>
+</body>
+</html>
